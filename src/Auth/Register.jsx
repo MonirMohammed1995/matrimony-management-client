@@ -2,26 +2,66 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FcGoogle } from 'react-icons/fc';
 import Swal from 'sweetalert2';
-import { useAuth } from '../context/AuthProvider';
+import {
+  createUserWithEmailAndPassword,
+  GoogleAuthProvider,
+  signInWithPopup,
+  updateProfile,
+} from 'firebase/auth';
+import axios from 'axios';
+import { auth } from '../firebase/firebase.config';
 
 const Register = () => {
-  const { createUser, signInWithGoogle, updateUserProfile } = useAuth();
-  const [form, setForm] = useState({ name: '', email: '', password: '' });
+  const provider = new GoogleAuthProvider();
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    photo: '',
+    role: 'user',
+  });
+
   const navigate = useNavigate();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleRegister = async (e) => {
-    e.preventDefault();
-    const { name, email, password } = form;
+  const saveUserToDB = async (user, role = 'user') => {
+    const userInfo = {
+      name: user.displayName || 'No Name',
+      email: user.email,
+      photo: user.photoURL || '',
+      role: role,
+    };
 
     try {
-      const userCredential = await createUser(email, password);
-      await updateUserProfile({ displayName: name });
+      await axios.post(`${import.meta.env.VITE_API_URL}/users`, userInfo);
+    } catch (err) {
+      console.error('Failed to save user:', err);
+    }
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    const { name, email, password, photo, role } = form;
+
+    if (!name || !email || !password || !photo) {
+      return Swal.fire('Error', 'Please fill in all fields.', 'warning');
+    }
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+
+      await updateProfile(auth.currentUser, {
+        displayName: name,
+        photoURL: photo,
+      });
+
+      await saveUserToDB(auth.currentUser, role);
 
       Swal.fire('Success!', 'Account created successfully.', 'success');
+      setForm({ name: '', email: '', password: '', photo: '', role: 'user' });
       navigate('/dashboard');
     } catch (err) {
       Swal.fire('Error', err.message, 'error');
@@ -30,7 +70,8 @@ const Register = () => {
 
   const handleGoogleSignUp = async () => {
     try {
-      await signInWithGoogle();
+      const result = await signInWithPopup(auth, provider);
+      await saveUserToDB(result.user, 'user'); // force default role
       Swal.fire('Success!', 'Signed up with Google.', 'success');
       navigate('/dashboard');
     } catch (err) {
@@ -50,8 +91,17 @@ const Register = () => {
             value={form.name}
             onChange={handleChange}
             placeholder="Full Name"
+            className="w-full px-4 py-2 border rounded-lg"
             required
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
+            type="text"
+            name="photo"
+            value={form.photo}
+            onChange={handleChange}
+            placeholder="Photo URL"
+            className="w-full px-4 py-2 border rounded-lg"
+            required
           />
           <input
             type="email"
@@ -59,8 +109,8 @@ const Register = () => {
             value={form.email}
             onChange={handleChange}
             placeholder="Email"
+            className="w-full px-4 py-2 border rounded-lg"
             required
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <input
             type="password"
@@ -68,9 +118,20 @@ const Register = () => {
             value={form.password}
             onChange={handleChange}
             placeholder="Password"
+            className="w-full px-4 py-2 border rounded-lg"
             required
-            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <select
+            name="role"
+            value={form.role}
+            onChange={handleChange}
+            className="w-full px-4 py-2 border rounded-lg"
+            required
+          >
+            <option value="user">User</option>
+            <option value="admin">Admin</option>
+          </select>
+
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"

@@ -2,12 +2,18 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FcGoogle } from 'react-icons/fc';
 import Swal from 'sweetalert2';
-import { useAuth } from '../context/AuthProvider';
+import {
+  GoogleAuthProvider,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+} from 'firebase/auth';
+import axios from 'axios';
+import { auth } from '../firebase/firebase.config';
 
 const Login = () => {
-  const { signIn, signInWithGoogle } = useAuth();
   const [form, setForm] = useState({ email: '', password: '' });
   const navigate = useNavigate();
+  const provider = new GoogleAuthProvider();
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -23,17 +29,35 @@ const Login = () => {
     }
 
     try {
-      await signIn(email, password);
+      await signInWithEmailAndPassword(auth, email, password);
       Swal.fire('Success!', 'Logged in successfully.', 'success');
+      setForm({ email: '', password: '' });
       navigate('/');
     } catch (err) {
       Swal.fire('Error', err.message || 'Login failed.', 'error');
     }
   };
 
+  const saveUserToDB = async (user) => {
+    const userInfo = {
+      name: user.displayName || 'No Name',
+      email: user.email,
+      photo: user.photoURL || '',
+      role: 'user',
+      isActive: true,
+    };
+
+    try {
+      await axios.post(`${import.meta.env.VITE_API_URL}/users`, userInfo);
+    } catch (err) {
+      console.error('User may already exist:', err.response?.data || err.message);
+    }
+  };
+
   const handleGoogleLogin = async () => {
     try {
-      await signInWithGoogle();
+      const result = await signInWithPopup(auth, provider);
+      await saveUserToDB(result.user);
       Swal.fire('Success!', 'Logged in with Google.', 'success');
       navigate('/');
     } catch (err) {

@@ -1,20 +1,18 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useState } from 'react';
 import { AuthContext } from '../../../context/AuthProvider';
 import Swal from 'sweetalert2';
 
-const divisions = [
-  'Dhaka', 'Chittagong', 'Khulna', 'Rajshahi',
-  'Barisal', 'Sylhet', 'Rangpur', 'Mymensingh',
-];
+// Constant arrays
+const divisions = [ 'Dhaka', 'Chittagong', 'Khulna', 'Rajshahi', 'Barisal', 'Sylhet', 'Rangpur', 'Mymensingh' ];
+const occupations = [ 'Student', 'Engineer', 'Doctor', 'Teacher', 'Business', 'Freelancer', 'Other' ];
+const heights = [ 'Below 150 cm', '150-160 cm', '161-170 cm', '171-180 cm', 'Above 180 cm' ];
+const weights = [ 'Below 50 kg', '50-60 kg', '61-70 kg', '71-80 kg', 'Above 80 kg' ];
+const races = [ 'Fair', 'Medium', 'Dark' ];
+const bloodTypes = [ 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-' ];
+const hairTypes = [ 'Straight', 'Wavy', 'Curly', 'Coily' ];
+const genders = [ 'male', 'female' ];
 
-const occupations = ['Student', 'Engineer', 'Doctor', 'Teacher', 'Business', 'Freelancer', 'Other'];
-const heights = ['Below 150 cm', '150-160 cm', '161-170 cm', '171-180 cm', 'Above 180 cm'];
-const weights = ['Below 50 kg', '50-60 kg', '61-70 kg', '71-80 kg', 'Above 80 kg'];
-const races = ['Fair', 'Medium', 'Dark'];
-const genders = ['male', 'female'];
-const bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
-const hairTypes = ['Straight', 'Wavy', 'Curly', 'Coily'];
-
+// Utility
 const calculateAge = dob => {
   if (!dob) return '';
   const birthDate = new Date(dob);
@@ -27,7 +25,7 @@ const calculateAge = dob => {
   return age >= 0 ? age : '';
 };
 
-const EditBiodata = () => {
+const AddBioData = () => {
   const { user } = useContext(AuthContext);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -51,58 +49,10 @@ const EditBiodata = () => {
     expectedPartnerWeight: '',
     phoneNumber: '',
     email: user?.email || '',
-    isPremium: false,
   });
-
-  useEffect(() => {
-    if (!user?.email) return;
-
-    async function fetchBiodata() {
-      setLoading(true);
-      try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/biodatas/${user.email}`);
-        const data = await res.json();
-        if (res.ok) {
-          // Fill form with fetched data, also calculate age from DOB for safety
-          setFormData({
-            biodataType: data.biodataType || '',
-            name: data.name || '',
-            photoURL: data.photoURL || '',
-            dateOfBirth: data.dateOfBirth || '',
-            age: calculateAge(data.dateOfBirth) || '',
-            height: data.height || '',
-            weight: data.weight || '',
-            occupation: data.occupation || '',
-            race: data.race || '',
-            bloodType: data.bloodType || '',
-            hairType: data.hairType || '',
-            fatherName: data.fatherName || '',
-            motherName: data.motherName || '',
-            permanentDivision: data.permanentDivision || '',
-            presentDivision: data.presentDivision || '',
-            expectedPartnerAge: data.expectedPartnerAge || '',
-            expectedPartnerHeight: data.expectedPartnerHeight || '',
-            expectedPartnerWeight: data.expectedPartnerWeight || '',
-            phoneNumber: data.phoneNumber || '',
-            email: user.email,
-            isPremium: data.isPremium || false,
-          });
-        } else {
-          Swal.fire('Error', 'Failed to load biodata', 'error');
-        }
-      } catch (error) {
-        Swal.fire('Error', 'Failed to load biodata', 'error');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchBiodata();
-  }, [user?.email]);
 
   const handleChange = e => {
     const { name, value } = e.target;
-
     if (name === 'dateOfBirth') {
       const age = calculateAge(value);
       setFormData(prev => ({ ...prev, dateOfBirth: value, age }));
@@ -115,38 +65,60 @@ const EditBiodata = () => {
     e.preventDefault();
     setLoading(true);
 
+    const biodata = { ...formData, isPremium: false };
+
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/biodatas/${user.email}`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/biodatas/${user?.email}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(biodata),
       });
+
       const data = await res.json();
 
-      if (res.ok && (data.modifiedCount > 0 || data.upsertedCount > 0)) {
-        Swal.fire('Success', 'Biodata updated successfully!', 'success');
+      if (res.ok && data.success) {
+        Swal.fire('Success', data.message || 'Biodata saved!', 'success');
+        setFormData({
+          biodataType: '',
+          name: '',
+          photoURL: '',
+          dateOfBirth: '',
+          age: '',
+          height: '',
+          weight: '',
+          occupation: '',
+          race: '',
+          bloodType: '',
+          hairType: '',
+          fatherName: '',
+          motherName: '',
+          permanentDivision: '',
+          presentDivision: '',
+          expectedPartnerAge: '',
+          expectedPartnerHeight: '',
+          expectedPartnerWeight: '',
+          phoneNumber: '',
+          email: user?.email || '',
+        });
       } else {
-        Swal.fire('Info', data.message || 'No changes detected.', 'info');
+        Swal.fire('Info', data.message || 'Could not save biodata.', 'info');
       }
     } catch (error) {
-      Swal.fire('Error', 'Failed to update biodata.', 'error');
+      Swal.fire('Error', 'Failed to submit biodata.', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading && !formData.name) {
-    return <div className="text-center py-10 text-lg">Loading...</div>;
-  }
-
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
       <div className="bg-white shadow-md rounded-xl p-8">
-        <h2 className="text-3xl font-bold text-center mb-6">Edit Your Biodata</h2>
+        <h2 className="text-3xl font-bold text-center mb-6">Create Your Biodata</h2>
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left Column */}
           <div className="space-y-4">
+            {/* Repeatable input fields */}
             {[
               { label: 'Biodata Type', name: 'biodataType', type: 'select', options: genders },
               { label: 'Name', name: 'name' },
@@ -172,11 +144,7 @@ const EditBiodata = () => {
                   >
                     <option value="">Select</option>
                     {options.map(option => (
-                      <option key={option} value={option}>
-                        {type === 'select' && name === 'biodataType'
-                          ? option.charAt(0).toUpperCase() + option.slice(1)
-                          : option}
-                      </option>
+                      <option key={option} value={option}>{option}</option>
                     ))}
                   </select>
                 ) : (
@@ -185,7 +153,7 @@ const EditBiodata = () => {
                     type={type}
                     value={formData[name]}
                     onChange={handleChange}
-                    className={`input input-bordered w-full ${rest.readOnly ? 'bg-gray-100 text-gray-600' : ''}`}
+                    className={`input input-bordered w-full ${rest.readOnly ? 'bg-gray-100' : ''}`}
                     {...rest}
                     required
                   />
@@ -219,21 +187,18 @@ const EditBiodata = () => {
                   >
                     <option value="">Select</option>
                     {options.map(option => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
+                      <option key={option} value={option}>{option}</option>
                     ))}
                   </select>
                 ) : (
                   <input
                     name={name}
                     type={type}
-                    value={name === 'email' ? user?.email || '' : formData[name]}
+                    value={formData[name]}
                     onChange={handleChange}
                     className={`input input-bordered w-full ${rest.readOnly ? 'bg-gray-100 text-gray-600' : ''}`}
                     {...rest}
                     required
-                    readOnly={rest.readOnly || name === 'email'}
                   />
                 )}
               </div>
@@ -252,4 +217,4 @@ const EditBiodata = () => {
   );
 };
 
-export default EditBiodata;
+export default AddBioData;
