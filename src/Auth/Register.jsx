@@ -62,7 +62,7 @@ const Register = () => {
 
       Swal.fire('Success!', 'Account created successfully.', 'success');
       setForm({ name: '', email: '', password: '', photo: '', role: 'user' });
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       Swal.fire('Error', err.message, 'error');
     }
@@ -73,7 +73,7 @@ const Register = () => {
       const result = await signInWithPopup(auth, provider);
       await saveUserToDB(result.user, 'user'); // force default role
       Swal.fire('Success!', 'Signed up with Google.', 'success');
-      navigate('/dashboard');
+      navigate('/');
     } catch (err) {
       Swal.fire('Error', err.message, 'error');
     }
@@ -121,16 +121,6 @@ const Register = () => {
             className="w-full px-4 py-2 border rounded-lg"
             required
           />
-          <select
-            name="role"
-            value={form.role}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border rounded-lg"
-            required
-          >
-            <option value="user">User</option>
-            <option value="admin">Admin</option>
-          </select>
 
           <button
             type="submit"
